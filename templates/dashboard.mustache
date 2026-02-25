@@ -1,20 +1,24 @@
 <div class="local-courseanalytics-dashboard">
-  <h3>Course Engagement Metrics</h3>
+  <h3>{{#str}}dashboardtitle, local_courseanalytics{{/str}}</h3>
 
   <div class="local-courseanalytics-metrics">
     <div class="local-courseanalytics-card">
-      <div class="local-courseanalytics-label">Total Courses Created</div>
+      <div class="local-courseanalytics-label">{{#str}}totalcoursescreated, local_courseanalytics{{/str}}</div>
       <div class="local-courseanalytics-value">{{totalcoursescreated}}</div>
     </div>
 
     <div class="local-courseanalytics-card">
-      <div class="local-courseanalytics-label">Total Enrolments</div>
+      <div class="local-courseanalytics-label">{{#str}}totalenrolments, local_courseanalytics{{/str}}</div>
       <div class="local-courseanalytics-value">{{totalenrolments}}</div>
     </div>
 
     <div class="local-courseanalytics-card">
-      <div class="local-courseanalytics-label">Total Completions</div>
+      <div class="local-courseanalytics-label">{{#str}}totalcompletions, local_courseanalytics{{/str}}</div>
       <div class="local-courseanalytics-value">{{totalcompletions}}</div>
     </div>
   </div>
+
+  {{^hasmetrics}}
+    <p>{{#str}}dashboardemptystate, local_courseanalytics{{/str}}</p>
+  {{/hasmetrics}}
 </div>
