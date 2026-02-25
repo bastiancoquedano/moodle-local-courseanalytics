@@ -25,4 +25,43 @@ class analytics_service {
 
         $DB->insert_record('local_courseanalytics_metrics', $record);
     }
+
+    /**
+     * Get total number of created courses events.
+     *
+     * @return int
+     */
+    public static function get_total_courses_created(): int {
+        global $DB;
+
+        return (int) $DB->count_records('local_courseanalytics_metrics', [
+            'eventname' => '\\core\\event\\course_created',
+        ]);
+    }
+
+    /**
+     * Get total number of enrolment created events.
+     *
+     * @return int
+     */
+    public static function get_total_enrolments(): int {
+        global $DB;
+
+        return (int) $DB->count_records('local_courseanalytics_metrics', [
+            'eventname' => '\\core\\event\\user_enrolment_created',
+        ]);
+    }
+
+    /**
+     * Get total number of completion events.
+     *
+     * @return int
+     */
+    public static function get_total_completions(): int {
+        global $DB;
+
+        return (int) $DB->count_records('local_courseanalytics_metrics', [
+            'eventname' => '\\core\\event\\course_completed',
+        ]);
+    }
 }
