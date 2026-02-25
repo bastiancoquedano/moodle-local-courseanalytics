@@ -17,10 +17,15 @@ class dashboard implements \renderable, \templatable {
      * @return array
      */
     public function export_for_template(renderer_base $output): array {
+        $totalcoursescreated = analytics_service::get_total_courses_created();
+        $totalenrolments = analytics_service::get_total_enrolments();
+        $totalcompletions = analytics_service::get_total_completions();
+
         return [
-            'totalcoursescreated' => analytics_service::get_total_courses_created(),
-            'totalenrolments' => analytics_service::get_total_enrolments(),
-            'totalcompletions' => analytics_service::get_total_completions(),
+            'totalcoursescreated' => $totalcoursescreated,
+            'totalenrolments' => $totalenrolments,
+            'totalcompletions' => $totalcompletions,
+            'hasmetrics' => ($totalcoursescreated + $totalenrolments + $totalcompletions) > 0,
         ];
     }
 }
