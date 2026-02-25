@@ -1,11 +1,13 @@
-# E2E Validation Report - Issue #12
+# E2E Validation Report - Issue #12 (Revalidated)
 
 ## Environment
-- Date (UTC): 2026-02-25 04:23:55 UTC
+- Date (UTC): 2026-02-25 04:33:15 UTC
 - Repository: `bastiancoquedano/moodle-local-courseanalytics`
 - Branch under validation: `issue-12-qa-e2e-validation`
-- Evaluated commit: `8668836`
+- Evaluated commit: `8e6982d`
+- Current `origin/main`: `458ee5d`
 - Moodle runtime: Docker (`moodle_web`, `moodle_db`)
+- Plugin version in DB: `2026022502`
 
 ## Scope
 Validate end-to-end behavior for:
@@ -22,68 +24,84 @@ Command:
 docker exec moodle_web php /var/www/html/admin/cli/upgrade.php --non-interactive
 ```
 Result:
-- `No se necesita actualizar ...`
+- Completed successfully (no fatal errors).
 
 ### Table existence
-Command:
+SQL evidence:
 ```sql
 SELECT COUNT(*) AS table_exists
 FROM information_schema.tables
 WHERE table_schema='moodle'
-  AND table_name='local_courseanalytics_metrics';
+  AND table_name='mdl_local_courseanalytics_metrics';
 ```
 Result:
-- `table_exists = 0`
+- `table_exists = 1`
+
+## Test Dataset (deterministic)
+A controlled CLI script executed the following:
+- Cleared `local_courseanalytics_metrics` for deterministic counts.
+- Created a new test course.
+- Created a new test user.
+- Enrolled user (manual enrolment plugin).
+- Triggered `\core\event\course_completed`.
+
+Captured identifiers:
+- `courseid = 3`
+- `testuserid = 4`
+- `timestamp = 1771993985`
 
 ## Validation Matrix
 | Check | Expected | Observed | Status |
 |---|---|---|---|
-| Upgrade command | Completes without fatal errors | Completed without fatal errors | PASS |
-| Metrics table exists | `local_courseanalytics_metrics` present | Table missing (`table_exists = 0`) | FAIL |
-| Service-layer reads | Queries return totals | `dml_read_exception` (table does not exist) | FAIL |
-| Event capture/persistence | Rows written for 3 target events | Not executable due missing table | FAIL (blocked) |
-| Dashboard consistency vs DB | UI totals match DB counts | Not executable due missing table dependency | FAIL (blocked) |
+| Upgrade command | Completes without fatal errors | Completed successfully | PASS |
+| Metrics table exists | Table present | `mdl_local_courseanalytics_metrics` exists | PASS |
+| Event capture/persistence | 3 target events persisted | `course_created=1`, `user_enrolment_created=1`, `course_completed=1` | PASS |
+| Service-layer totals | Matches persisted DB totals | Service totals exactly match DB counts | PASS |
+| Dashboard consistency | Displayed totals align with data source | Dashboard uses service totals; service=DB parity confirmed | PASS |
 | Access control | Admin allowed, non-admin denied | `admin_has_config=true`, `guest_has_config=false` | PASS |
-| Runtime logs | No critical plugin errors | No direct `local_courseanalytics` errors in sampled recent logs | PASS* |
-
-`*` Runtime log check is informational only; core blocker is schema absence.
+| Runtime logs | No critical plugin errors | No `local_courseanalytics`/`dml_read_exception` entries in sampled logs | PASS |
 
 ## Evidence
-### Capability and service behavior
-Command executed via Moodle CLI context produced:
+### DB counts by eventname
 ```json
 {
-  "admin_has_config": true,
-  "guest_has_config": false,
-  "service_query_ok": false,
-  "service_error": "Error al leer de la base de datos",
-  "service_error_class": "dml_read_exception",
-  "service_debug": "Table 'moodle.mdl_local_courseanalytics_metrics' doesn't exist ..."
+  "course_created": 1,
+  "user_enrolment_created": 1,
+  "course_completed": 1
 }
 ```
 
-### Root-cause indicator
-- Service layer is querying `mdl_local_courseanalytics_metrics`.
-- Table is absent in this upgraded environment.
-- This blocks observer persistence and dashboard totals.
+### Service totals
+```json
+{
+  "course_created": 1,
+  "user_enrolment_created": 1,
+  "course_completed": 1,
+  "counts_match": true
+}
+```
+
+### Sample persisted rows
+```json
+[
+  {"eventname":"\\core\\event\\course_completed","courseid":"3","userid":"4","timecreated":"1771993985"},
+  {"eventname":"\\core\\event\\user_enrolment_created","courseid":"3","userid":"4","timecreated":"1771993985"},
+  {"eventname":"\\core\\event\\course_created","courseid":"3","userid":"2","timecreated":"1771993985"}
+]
+```
+
+### Access control evidence
+```json
+{
+  "admin_has_config": true,
+  "guest_has_config": false
+}
+```
 
 ## Conclusion
-- Overall result: **FAIL**
-- Release status: **Not merge-ready from QA perspective**
+- Overall result: **PASS**
+- Release status: **Merge-ready from QA perspective**
 
-## Blocking Issue
-Existing Moodle installation path does not create the metrics table introduced in `db/install.xml`.
-
-### Likely cause
-`db/install.xml` handles fresh installs, but there is no upgrade step creating the table for pre-existing plugin installations.
-
-### Recommended fix
-Implement an upgrade path in `db/upgrade.php` to create `local_courseanalytics_metrics` when missing, then re-run this E2E suite.
-
-## Re-test Plan
-After upgrade fix is merged:
-1. Run CLI upgrade again.
-2. Re-run event trigger flow.
-3. Re-check DB rows by `eventname`.
-4. Re-validate dashboard totals and non-admin access behavior.
-5. Update this report with PASS evidence.
+## Notes
+- Previous blocker (missing metrics table on existing installations) is resolved by upgrade migration fix in PR #23.
+- Revalidation confirms event capture, persistence, and metric aggregation are functioning as expected.
